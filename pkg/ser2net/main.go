@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/reiver/go-telnet"
@@ -34,7 +35,6 @@ func (w *SerialWorker) connectSerial() {
 	// Poll on Serial to open (Testing)
 	con, err := serial.Open(w.path, &w.mode)
 	for err != nil {
-		fmt.Printf("Waiting for serial to connect...\n")
 		time.Sleep(time.Second)
 		con, err = serial.Open(w.path, &w.mode)
 	}
@@ -78,7 +78,11 @@ func (w *SerialWorker) rxWorker() {
 		_, err := w.serialConn.Read(b)
 
 		if err != nil {
-			fmt.Printf("error reading from serial\n")
+			if err == syscall.EINTR {
+				continue
+			}
+
+			fmt.Printf("error reading from serial: %v\n", err)
 			w.connected = false
 
 			porterr, ok := err.(serial.PortError)
@@ -148,7 +152,6 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 			if err != nil {
 				break
 			}
-			fmt.Printf("P: %s", p)
 			w.txJobQueue <- p[0]
 		}
 		wg.Done()
@@ -170,10 +173,13 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 }
 
 // NewSerialWorker creates a new SerialWorker and connect to path with 115200N8
-func NewSerialWorker(path string) (*SerialWorker, error) {
+func NewSerialWorker(path string, baud int) (*SerialWorker, error) {
 	var w SerialWorker
 	w.txJobQueue = make(chan byte, 4096)
-	w.mode.BaudRate = 115200
+	if baud <= 0 {
+		baud = 115200
+	}
+	w.mode.BaudRate = baud
 	w.mode.DataBits = 8
 	w.mode.Parity = serial.NoParity
 	w.mode.StopBits = serial.OneStopBit
