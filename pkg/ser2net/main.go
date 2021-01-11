@@ -154,9 +154,6 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 			}
 
 			if lastchar == '\r' && p[0] != '\n' {
-				fmt.Printf("%x\n", lastchar)
-				fmt.Printf("%x\n", p[0])
-
 				w.txJobQueue <- lastchar
 				w.txJobQueue <- p[0]
 			}
@@ -166,7 +163,6 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 				continue
 			}
 			w.txJobQueue <- p[0]
-			fmt.Printf("%x\n", p[0])
 
 		}
 		wg.Done()
