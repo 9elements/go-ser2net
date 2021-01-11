@@ -126,9 +126,6 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	var buffer [1]byte // Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up.
-	p := buffer[:]
-
 	rx := make(chan byte, 4096)
 
 	// Add RX fifo
@@ -147,12 +144,30 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 		wg.Done()
 	}()
 	go func() {
+		var lastchar byte
+		var buffer [1]byte // Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up.
+		p := buffer[:]
 		for {
 			_, err := rr.Read(p)
 			if err != nil {
 				break
 			}
+
+			if lastchar == '\r' && p[0] != '\n' {
+				fmt.Printf("%x\n", lastchar)
+				fmt.Printf("%x\n", p[0])
+
+				w.txJobQueue <- lastchar
+				w.txJobQueue <- p[0]
+			}
+
+			lastchar = p[0]
+			if p[0] == '\r' {
+				continue
+			}
 			w.txJobQueue <- p[0]
+			fmt.Printf("%x\n", p[0])
+
 		}
 		wg.Done()
 	}()
