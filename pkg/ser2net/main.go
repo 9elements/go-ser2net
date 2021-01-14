@@ -371,13 +371,8 @@ func (w *SerialWorker) StartGoTTY(address string, port int, basicauth string) (e
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	gCtx, gCancel := context.WithCancel(context.Background())
+	err = srv.Run(w.context)
 
-	srv.Run(ctx, server.WithGracefullContext(gCtx))
-
-	cancel()
-	gCancel()
 	return
 }
 
