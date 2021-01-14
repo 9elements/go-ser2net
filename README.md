@@ -16,9 +16,17 @@ import (
 )
 
         w, _ := ser2net.NewSerialWorker("/dev/ttyS0")
+	// Run serial worker in new routine
         go w.Worker()
 
-        err := telnet.ListenAndServe(":5555", w)
+	// Start telnet on port 5555 and serve forever
+        err := w.StartTelnet("", 5555)
+        if nil != err {
+                panic(err)
+        }
+
+	// Start GoTTY on port 5556 and serve forever
+	err = w.StartGoTTY("", 5556, "")
         if nil != err {
                 panic(err)
         }
