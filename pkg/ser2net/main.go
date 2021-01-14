@@ -1,7 +1,9 @@
 package ser2net
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -76,6 +78,7 @@ func (w *SerialWorker) rxWorker() {
 	for {
 		b := make([]byte, 1)
 		_, err := w.serialConn.Read(b)
+		fmt.Printf("|%c\n", b)
 
 		if err != nil {
 			if err == syscall.EINTR {
@@ -121,25 +124,34 @@ func (w *SerialWorker) Worker() {
 	}
 }
 
-// ServeTELNET is the worker operating the telnet port
-func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Writer, rr telnet.Reader) {
+// Serve is invoked by an external entity to provide a Reader and Writer interface
+func (w *SerialWorker) Serve(context context.Context, wr io.Writer, rr io.Reader) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	rx := make(chan byte, 4096)
 
 	// Add RX fifo
-
 	w.mux.Lock()
 	w.rxJobQueue = append(w.rxJobQueue, rx)
 	w.mux.Unlock()
 
 	go func() {
+		var lastchar byte
+
 		for b := range rx {
+			if b == '\n' && lastchar != '\r' {
+
+				_, err := wr.Write([]byte{'\r'})
+				if err != nil {
+					break
+				}
+			}
 			_, err := wr.Write([]byte{b})
 			if err != nil {
 				break
 			}
+			lastchar = b
 		}
 		wg.Done()
 	}()
@@ -181,6 +193,24 @@ func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Write
 	}
 	w.rxJobQueue = new
 	w.mux.Unlock()
+}
+
+// ServeTELNET is the worker operating the telnet port - used by reiver/go-telnet
+func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Writer, rr telnet.Reader) {
+
+	// Disable local echo on client
+	_, err := wr.Write([]byte{0xFF, 0xFB, 0x01}) // IAC WILL ECHO
+	if err != nil {
+		return
+	}
+
+	// Disable local echo on client
+	_, err = wr.Write([]byte{0xFF, 0xFB, 0x03}) // IAC WILL SUPRESS GO AHEAD
+	if err != nil {
+		return
+	}
+
+	w.Serve(context.Background(), wr, rr)
 }
 
 // NewSerialWorker creates a new SerialWorker and connect to path with 115200N8
