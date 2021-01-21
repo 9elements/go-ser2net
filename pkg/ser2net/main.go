@@ -337,6 +337,16 @@ func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err erro
 	return
 }
 
+// NewIoReadWriteCloser returns a ReadWriteCloser interface
+func (w *SerialWorker) NewIoReadWriteCloser() (s io.ReadWriteCloser, err error) {
+	rx := w.Open()
+	s = SerialIOWorker{w: w,
+		rx: rx,
+	}
+
+	return
+}
+
 // StartGoTTY starts a GoTTY server
 func (w *SerialWorker) StartGoTTY(address string, port int, basicauth string) (err error) {
 	htermOptions := &server.HtermPrefernces{}

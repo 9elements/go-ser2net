@@ -27,6 +27,7 @@ func main() {
 	flag.IntVar(&port, "port", 0, "Telnet port")
 	useTelnet := flag.Bool("telnet", false, "Use telnet")
 	useGotty := flag.Bool("gotty", false, "Use GoTTY")
+	useStdin := flag.Bool("stdin", false, "Use stdin/stdout")
 
 	flag.Parse()
 	if devPath == "" && configPath == "" {
@@ -147,6 +148,41 @@ func main() {
 			if nil != err {
 				panic(err)
 			}
+		} else if useStdin != nil && *useStdin {
+			// Get a ReadWriteCloser interface
+			i, err := w.NewIoReadWriteCloser()
+			if nil != err {
+				panic(err)
+			}
+			defer i.Close()
+
+			// Copy serial out to stdout
+			go func() {
+				p := make([]byte, 1)
+				for {
+					n, err := i.Read(p)
+					if err != nil {
+						break
+					}
+					fmt.Printf("%s", string(p[:n]))
+				}
+			}()
+
+			// Copy stdin to serial
+			reader := bufio.NewReader(os.Stdin)
+			p := make([]byte, 1)
+			for {
+				_, err := reader.Read(p)
+				if err != nil {
+					break
+				}
+
+				_, err = i.Write(p)
+				if err != nil {
+					break
+				}
+			}
+
 		} else {
 			panic("Must specify one of [telnet, gotty]")
 		}

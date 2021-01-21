@@ -12,7 +12,6 @@ example:
 ```
 import (
 	"github.com/9elements/go-ser2net/pkg/ser2net"
-	"github.com/reiver/go-telnet"
 )
 
         w, _ := ser2net.NewSerialWorker("/dev/ttyS0")
@@ -31,3 +30,50 @@ import (
                 panic(err)
         }
 ```
+
+To use an io.ReadWriter do:
+
+```
+import (
+        "github.com/9elements/go-ser2net/pkg/ser2net"
+)
+
+	w, _ := ser2net.NewSerialWorker("/dev/ttyS0")
+	// Run serial worker in new routine
+	go w.Worker()
+
+	// Get a ReadWriteCloser interface
+	i, err := w.NewIoReadWriteCloser()
+	if nil != err {
+		panic(err)
+	}
+	defer i.Close()
+
+	// Copy serial out to stdout
+	go func() {
+		p := make([]byte, 1)
+		for {
+			n, err := i.Read(p)
+			if err != nil {
+				break
+			}
+			fmt.Printf("%s", string(p[:n]))
+		}
+	}()
+
+	// Copy stdin to serial
+	reader := bufio.NewReader(os.Stdin)
+	p := make([]byte, 1)
+	for {
+		_, err := reader.Read(p)
+		if err != nil {
+			break
+		}
+
+		_, err = i.Write(p)
+		if err != nil {
+			break
+		}
+	}
+```
+
