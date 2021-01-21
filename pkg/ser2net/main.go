@@ -251,8 +251,8 @@ func (w *SerialWorker) Name() (name string) {
 	return
 }
 
-// GoTTYWorker used as GoTTY factory
-type GoTTYWorker struct {
+// SerialIOWorker used as GoTTY factory
+type SerialIOWorker struct {
 	w          *SerialWorker
 	rx         chan byte
 	lastRxchar byte
@@ -260,7 +260,7 @@ type GoTTYWorker struct {
 }
 
 // Read implements gotty slave interface
-func (g GoTTYWorker) Read(buffer []byte) (n int, err error) {
+func (g SerialIOWorker) Read(buffer []byte) (n int, err error) {
 
 	b := <-g.rx
 
@@ -282,7 +282,7 @@ func (g GoTTYWorker) Read(buffer []byte) (n int, err error) {
 }
 
 // Write implements gotty slave interface
-func (g GoTTYWorker) Write(buffer []byte) (n int, err error) {
+func (g SerialIOWorker) Write(buffer []byte) (n int, err error) {
 
 	for _, p := range buffer {
 
@@ -308,19 +308,19 @@ func (g GoTTYWorker) Write(buffer []byte) (n int, err error) {
 }
 
 // Close implements gotty slave interface
-func (g GoTTYWorker) Close() (err error) {
+func (g SerialIOWorker) Close() (err error) {
 	g.w.Close(g.rx)
 	return
 }
 
 // ResizeTerminal implements gotty slave interface
-func (g GoTTYWorker) ResizeTerminal(columns int, rows int) (err error) {
+func (g SerialIOWorker) ResizeTerminal(columns int, rows int) (err error) {
 
 	return
 }
 
 // WindowTitleVariables implements gotty slave interface
-func (g GoTTYWorker) WindowTitleVariables() (titles map[string]interface{}) {
+func (g SerialIOWorker) WindowTitleVariables() (titles map[string]interface{}) {
 	titles = map[string]interface{}{
 		"command": "go-ser2net",
 	}
@@ -330,7 +330,7 @@ func (g GoTTYWorker) WindowTitleVariables() (titles map[string]interface{}) {
 // New returns a GoTTY slave
 func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err error) {
 	rx := w.Open()
-	s = GoTTYWorker{w: w,
+	s = SerialIOWorker{w: w,
 		rx: rx,
 	}
 
