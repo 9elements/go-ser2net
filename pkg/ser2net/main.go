@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/reiver/go-telnet"
+	"github.com/PatrickRudolph/telnet"
+	"github.com/PatrickRudolph/telnet/options"
 	"github.com/yudai/gotty/server"
 	"github.com/yudai/gotty/utils"
 	"go.bug.st/serial.v1"
@@ -160,24 +162,24 @@ func (w *SerialWorker) serve(context context.Context, wr io.Writer, rr io.Reader
 		wg.Done()
 	}()
 	go func() {
-		var lastchar byte
 		var buffer [1]byte // Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up.
 		p := buffer[:]
 		for {
-			_, err := rr.Read(p)
-			if err != nil {
+			n, err := rr.Read(p)
+			if err != nil && strings.Contains(strings.ToLower(err.Error()), "i/o timeout") {
+				time.Sleep(time.Microsecond)
+				continue
+			} else if err != nil {
 				break
-			}
-
-			if lastchar == '\r' && p[0] != '\n' {
-				w.txJobQueue <- lastchar
-				w.txJobQueue <- p[0]
-			}
-
-			lastchar = p[0]
-			if p[0] == '\r' {
+			} else if n == 0 {
+				continue
+			} else if p[0] == 0 {
+				// Skip NUL
 				continue
 			}
+
+			// In binary mode there's no special CRLF handling
+			// Always transmit everything received
 			w.txJobQueue <- p[0]
 
 		}
@@ -200,21 +202,9 @@ func (w *SerialWorker) serve(context context.Context, wr io.Writer, rr io.Reader
 }
 
 // ServeTELNET is the worker operating the telnet port - used by reiver/go-telnet
-func (w *SerialWorker) ServeTELNET(telnetContext telnet.Context, wr telnet.Writer, rr telnet.Reader) {
-
-	// Disable local echo on client
-	_, err := wr.Write([]byte{0xFF, 0xFB, 0x01}) // IAC WILL ECHO
-	if err != nil {
-		return
-	}
-
-	// Disable local echo on client
-	_, err = wr.Write([]byte{0xFF, 0xFB, 0x03}) // IAC WILL SUPRESS GO AHEAD
-	if err != nil {
-		return
-	}
-
-	w.serve(context.Background(), wr, rr)
+func (w *SerialWorker) HandleTelnet(conn *telnet.Connection) {
+	w.serve(context.Background(), conn, conn)
+	conn.Close()
 }
 
 // Close removes the channel from the internal list
@@ -388,8 +378,8 @@ func (w *SerialWorker) StartGoTTY(address string, port int, basicauth string) (e
 
 // StartTelnet starts a telnet server
 func (w *SerialWorker) StartTelnet(bindHostname string, port int) (err error) {
-	return telnet.ListenAndServe(fmt.Sprintf("%s:%d", bindHostname, port), w)
-
+	svr := telnet.NewServer(fmt.Sprintf("%s:%d", bindHostname, port), w, options.EchoOption, options.SuppressGoAheadOption, options.BinaryTransmissionOption)
+	return svr.ListenAndServe()
 }
 
 // NewSerialWorker creates a new SerialWorker and connect to path with 115200N8

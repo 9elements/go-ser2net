@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/9elements/go-ser2net/pkg/ser2net"
-	"github.com/reiver/go-telnet"
 )
 
 func main() {
@@ -82,7 +81,7 @@ func main() {
 				go func() {
 					defer wg.Done()
 
-					err := telnet.ListenAndServe(fmt.Sprintf("%s:%d", bindHostname, port), w)
+					err = w.StartTelnet(bindHostname, port)
 					if nil != err {
 						panic(err)
 					}
