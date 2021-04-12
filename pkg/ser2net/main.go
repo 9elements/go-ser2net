@@ -250,7 +250,7 @@ type SerialIOWorker struct {
 }
 
 // Read implements gotty slave interface
-func (g SerialIOWorker) Read(buffer []byte) (n int, err error) {
+func (g *SerialIOWorker) Read(buffer []byte) (n int, err error) {
 
 	b := <-g.rx
 
@@ -272,7 +272,7 @@ func (g SerialIOWorker) Read(buffer []byte) (n int, err error) {
 }
 
 // Write implements gotty slave interface
-func (g SerialIOWorker) Write(buffer []byte) (n int, err error) {
+func (g *SerialIOWorker) Write(buffer []byte) (n int, err error) {
 
 	for _, p := range buffer {
 
@@ -298,7 +298,7 @@ func (g SerialIOWorker) Write(buffer []byte) (n int, err error) {
 }
 
 // Close implements gotty slave interface
-func (g SerialIOWorker) Close() (err error) {
+func (g *SerialIOWorker) Close() (err error) {
 	g.w.Close(g.rx)
 	return
 }
@@ -320,7 +320,7 @@ func (g SerialIOWorker) WindowTitleVariables() (titles map[string]interface{}) {
 // New returns a GoTTY slave
 func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err error) {
 	rx := w.Open()
-	s = SerialIOWorker{w: w,
+	s = &SerialIOWorker{w: w,
 		rx: rx,
 	}
 
@@ -330,7 +330,7 @@ func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err erro
 // NewIoReadWriteCloser returns a ReadWriteCloser interface
 func (w *SerialWorker) NewIoReadWriteCloser() (s io.ReadWriteCloser, err error) {
 	rx := w.Open()
-	s = SerialIOWorker{w: w,
+	s = &SerialIOWorker{w: w,
 		rx: rx,
 	}
 
