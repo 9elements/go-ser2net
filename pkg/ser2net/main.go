@@ -81,10 +81,22 @@ func (w *SerialWorker) txWorker() {
 }
 
 func (w *SerialWorker) rxWorker() {
+	b := make([]byte, 16)
+
 	// Transmit to telnet
 	for {
-		b := make([]byte, 1)
-		_, err := w.serialConn.Read(b)
+		n, err := w.serialConn.Read(b)
+
+		if n > 0 {
+			w.mux.Lock()
+			for j := 0; j < n; j++ {
+
+				for i := range w.rxJobQueue {
+					w.rxJobQueue[i] <- b[j]
+				}
+			}
+			w.mux.Unlock()
+		}
 
 		if err != nil {
 			if err == syscall.EINTR {
@@ -102,12 +114,6 @@ func (w *SerialWorker) rxWorker() {
 			w.serialConn.Close()
 			break
 		}
-
-		w.mux.Lock()
-		for i := range w.rxJobQueue {
-			w.rxJobQueue[i] <- b[0]
-		}
-		w.mux.Unlock()
 	}
 }
 
@@ -162,26 +168,24 @@ func (w *SerialWorker) serve(context context.Context, wr io.Writer, rr io.Reader
 		wg.Done()
 	}()
 	go func() {
-		var buffer [1]byte // Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up.
-		p := buffer[:]
+		p := make([]byte, 16)
+
 		for {
 			n, err := rr.Read(p)
+			for j := 0; j < n; j++ {
+				if p[j] == 0 {
+					continue
+				}
+				// In binary mode there's no special CRLF handling
+				// Always transmit everything received
+				w.txJobQueue <- p[j]
+			}
 			if err != nil && strings.Contains(strings.ToLower(err.Error()), "i/o timeout") {
 				time.Sleep(time.Microsecond)
 				continue
 			} else if err != nil {
 				break
-			} else if n == 0 {
-				continue
-			} else if p[0] == 0 {
-				// Skip NUL
-				continue
 			}
-
-			// In binary mode there's no special CRLF handling
-			// Always transmit everything received
-			w.txJobQueue <- p[0]
-
 		}
 		wg.Done()
 	}()
@@ -251,22 +255,35 @@ type SerialIOWorker struct {
 
 // Read implements gotty slave interface
 func (g *SerialIOWorker) Read(buffer []byte) (n int, err error) {
+	var b byte
 
-	b := <-g.rx
+	b = <-g.rx
 
-	if b == '\n' && g.lastRxchar != '\r' {
+	for {
+		if b == '\n' && g.lastRxchar != '\r' {
+			if n < len(buffer) {
+				buffer[n] = '\r'
+				n++
+			}
+
+		}
 		if n < len(buffer) {
-			buffer[n] = '\r'
+			buffer[n] = b
 			n++
 		}
 
-	}
-	if n < len(buffer) {
-		buffer[n] = b
-		n++
-	}
+		g.lastRxchar = b
+		if n == len(buffer) {
+			break
+		}
 
-	g.lastRxchar = b
+		// Receive more characters if any
+		select {
+		case b = <-g.rx:
+		default:
+			return
+		}
+	}
 
 	return
 }
