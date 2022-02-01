@@ -1,4 +1,4 @@
-module github.com/9elements.com/go-ser2net
+module github.com/9elements/go-ser2net
 
 go 1.14
 
