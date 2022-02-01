@@ -1,3 +1,5 @@
+github.com/9elements/go-ser2net v0.0.0-20210518094450-dc0adcca6e31 h1:0LwU2gPh8W7d7i+wS62/mBanN9EHSPFc6AR/rY1OnqU=
+github.com/9elements/go-ser2net v0.0.0-20210518094450-dc0adcca6e31/go.mod h1:FqeHlfIUQXoFHwPYogIcdZwGISNwLv1A3f/Usijx56w=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/NYTimes/gziphandler v1.1.1 h1:ZUDjpQae29j0ryrS0u/B8HZfJBtBQHjqw2rQ2cqUQ3I=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=

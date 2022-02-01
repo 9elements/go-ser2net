@@ -249,7 +249,7 @@ type SerialIOWorker struct {
 	w          *SerialWorker
 	rx         chan byte
 	lastRxchar byte
-	//	lastTxchar byte
+	lastTxchar byte
 }
 
 // Read implements gotty slave interface
@@ -259,13 +259,13 @@ func (g *SerialIOWorker) Read(buffer []byte) (n int, err error) {
 	b = <-g.rx
 
 	for {
-		if b == '\n' && g.lastRxchar != '\r' {
-			if n < len(buffer) {
-				buffer[n] = '\r'
-				n++
-			}
+		//if b == '\n' && g.lastRxchar != '\r' {
+		//	if n < len(buffer) {
+		//		buffer[n] = '\r'
+		//		n++
+		//	}
 
-		}
+		//}
 		if n < len(buffer) {
 			buffer[n] = b
 			n++
@@ -292,22 +292,21 @@ func (g *SerialIOWorker) Write(buffer []byte) (n int, err error) {
 
 	for _, p := range buffer {
 
-		/* Test serial without character mapping
-		/if g.lastTxchar == '\r' && p != '\n' {
-		/	g.w.txJobQueue <- g.lastTxchar
-		/	g.w.txJobQueue <- p
-		/}
-		/g.lastTxchar = p
-		/if p == '\r' {
-		/	g.w.txJobQueue <- '\n'
-		/	n++
-		/	continue
-		/} else if p == 0x7f {
-		/	g.w.txJobQueue <- '\b'
-		/	n++
-		/	continue
-		/	}
-		*/
+		if g.lastTxchar == '\r' && p != '\n' {
+			g.w.txJobQueue <- g.lastTxchar
+			g.w.txJobQueue <- p
+		}
+		g.lastTxchar = p
+		if p == '\r' {
+			g.w.txJobQueue <- '\n'
+			n++
+			continue
+		} else if p == 0x7f {
+			g.w.txJobQueue <- '\b'
+			n++
+			continue
+		}
+
 		g.w.txJobQueue <- p
 		n++
 
