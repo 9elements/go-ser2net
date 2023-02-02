@@ -12,8 +12,8 @@ import (
 
 	"github.com/PatrickRudolph/telnet"
 	"github.com/PatrickRudolph/telnet/options"
-	"github.com/yudai/gotty/server"
-	"github.com/yudai/gotty/utils"
+	"github.com/sorenisanerd/gotty/server"
+	"github.com/sorenisanerd/gotty/utils"
 	"go.bug.st/serial.v1"
 )
 
