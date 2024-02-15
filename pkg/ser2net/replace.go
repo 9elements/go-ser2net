@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"syscall"
 	"time"
 
 	"go.bug.st/serial.v1"
@@ -55,8 +54,7 @@ func (s *Serial) Open() error {
 func (s *Serial) Serve(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go txJob(s.Context, wg, s.txQueue, s.SerialConn)
-	wg.Add(1)
-	go rxJob(s.Context, wg, s.rxQueue, s.SerialConn)
+	go rxJob(s.Context, s.rxQueue, s.SerialConn)
 }
 
 func txJob(ctx context.Context, wg *sync.WaitGroup, txQueue chan byte, p serial.Port) {
@@ -67,20 +65,15 @@ func txJob(ctx context.Context, wg *sync.WaitGroup, txQueue chan byte, p serial.
 			fmt.Println("txJob terminated")
 
 			return
-		case <-txQueue:
-			data := make([]byte, 0)
-			for len(txQueue) > 0 {
-				data = append(data, <-txQueue)
-			}
-			if _, err := p.Write(data); err != nil {
+		case data := <-txQueue:
+			if _, err := p.Write([]byte{data}); err != nil {
 				fmt.Printf("error in writing from txQueue: %v", err)
 			}
 		}
 	}
 }
 
-func rxJob(ctx context.Context, wg *sync.WaitGroup, rxQueue chan byte, p serial.Port) {
-	defer wg.Done()
+func rxJob(ctx context.Context, rxQueue chan byte, p serial.Port) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -96,10 +89,9 @@ func rxJob(ctx context.Context, wg *sync.WaitGroup, rxQueue chan byte, p serial.
 					rxQueue <- b[i]
 				}
 			}
-			if err != nil {
-				if errors.Is(err, syscall.EINTR) || errors.Is(err, io.EOF) {
-					continue
-				}
+			if errors.Is(err, io.EOF) {
+				fmt.Println("rxJob EOF")
+				return
 			}
 		}
 	}
