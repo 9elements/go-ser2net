@@ -141,7 +141,7 @@ func (w *SerialWorker) serve(context context.Context, wr io.Writer, rr io.Reader
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	rx := make(chan byte, 4096)
+	rx := make(chan byte, 32*1024)
 
 	// Add RX fifo
 	w.mux.Lock()
@@ -228,7 +228,7 @@ func (w *SerialWorker) Close(rx chan byte) {
 
 // Open adds a channel to the internal list
 func (w *SerialWorker) Open() (rx chan byte) {
-	rx = make(chan byte, 4096)
+	rx = make(chan byte, 32*1024)
 
 	// Add RX fifo
 	w.mux.Lock()
