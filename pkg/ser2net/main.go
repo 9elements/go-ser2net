@@ -49,12 +49,10 @@ func (w *SerialWorker) connectSerial() {
 
 	w.serialConn = con
 	w.connected = true
-
 }
 
 func (w *SerialWorker) txWorker() {
 	for job := range w.txJobQueue {
-
 		if w.connected {
 			_, err := w.serialConn.Write([]byte{job})
 			if err != nil {
@@ -90,7 +88,6 @@ func (w *SerialWorker) rxWorker() {
 		if n > 0 {
 			w.mux.Lock()
 			for j := 0; j < n; j++ {
-
 				for i := range w.rxJobQueue {
 					w.rxJobQueue[i] <- b[j]
 				}
@@ -264,7 +261,6 @@ func (g *SerialIOWorker) Read(buffer []byte) (n int, err error) {
 				buffer[n] = '\r'
 				n++
 			}
-
 		}
 		if n < len(buffer) {
 			buffer[n] = b
@@ -289,7 +285,6 @@ func (g *SerialIOWorker) Read(buffer []byte) (n int, err error) {
 
 // Write implements gotty slave interface
 func (g *SerialIOWorker) Write(buffer []byte) (n int, err error) {
-
 	for _, p := range buffer {
 
 		if g.lastTxchar == '\r' && p != '\n' {
@@ -321,7 +316,6 @@ func (g *SerialIOWorker) Close() (err error) {
 
 // ResizeTerminal implements gotty slave interface
 func (g SerialIOWorker) ResizeTerminal(columns int, rows int) (err error) {
-
 	return
 }
 
@@ -336,7 +330,8 @@ func (g SerialIOWorker) WindowTitleVariables() (titles map[string]interface{}) {
 // New returns a GoTTY slave
 func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err error) {
 	rx := w.Open()
-	s = &SerialIOWorker{w: w,
+	s = &SerialIOWorker{
+		w:  w,
 		rx: rx,
 	}
 
@@ -346,7 +341,8 @@ func (w *SerialWorker) New(params map[string][]string) (s server.Slave, err erro
 // NewIoReadWriteCloser returns a ReadWriteCloser interface
 func (w *SerialWorker) NewIoReadWriteCloser() (s io.ReadWriteCloser, err error) {
 	rx := w.Open()
-	s = &SerialIOWorker{w: w,
+	s = &SerialIOWorker{
+		w:  w,
 		rx: rx,
 	}
 
@@ -355,10 +351,7 @@ func (w *SerialWorker) NewIoReadWriteCloser() (s io.ReadWriteCloser, err error) 
 
 // StartGoTTY starts a GoTTY server
 func (w *SerialWorker) StartGoTTY(address string, port int, basicauth string) (err error) {
-	htermOptions := &server.HtermPrefernces{}
-	appOptions := &server.Options{
-		Preferences: htermOptions,
-	}
+	appOptions := &server.Options{}
 	if err = utils.ApplyDefaultValues(appOptions); err != nil {
 		return
 	}
@@ -368,7 +361,6 @@ func (w *SerialWorker) StartGoTTY(address string, port int, basicauth string) (e
 	appOptions.Port = fmt.Sprintf("%d", port)
 	appOptions.EnableBasicAuth = len(basicauth) > 0
 	appOptions.Credential = basicauth
-	appOptions.Preferences.BackspaceSendsBackspace = true
 	hostname, _ := os.Hostname()
 
 	appOptions.TitleVariables = map[string]interface{}{
